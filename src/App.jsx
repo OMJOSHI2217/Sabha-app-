@@ -58,33 +58,69 @@ function App() {
   const dynamicScaleText = "1.18"; // Static display locked at requested 1.18x
 
 
+  // 🚀 ULTIMATE ASPECT-CORRECT SNAPSHOT ENGINE
+  // Intelligently crops the raw high-res camera stream to perfectly match the active
+  // viewport aspect ratio, simulating native 'object-fit: cover' and preventing horizontal squishing!
   const handleCapturePhoto = () => {
     if (!videoElement) return;
     const canvas3d = document.querySelector('.canvas-container canvas');
     if (!canvas3d) return;
 
-    const outputWidth = videoElement.videoWidth;
-    const outputHeight = videoElement.videoHeight;
+    // 1. Detect screen viewport aspect ratio (exactly what user sees)
+    const clientW = canvas3d.clientWidth;
+    const clientH = canvas3d.clientHeight;
+    const screenAspect = clientW / clientH;
+
+    // 2. Detect raw camera sensor metrics
+    const videoW = videoElement.videoWidth;
+    const videoH = videoElement.videoHeight;
+    const videoAspect = videoW / videoH;
+
+    // 3. Construct optimal target canvas resolution locked to sensor height for crispness
+    const targetH = videoH;
+    const targetW = targetH * screenAspect;
+
     const merged = document.createElement('canvas');
-    merged.width = outputWidth;
-    merged.height = outputHeight;
+    merged.width = targetW;
+    merged.height = targetH;
     const ctx = merged.getContext('2d');
 
+    // 4. Implement 'object-fit: cover' source cropping math
+    let sx = 0;
+    let sy = 0;
+    let sWidth = videoW;
+    let sHeight = videoH;
+
+    if (screenAspect < videoAspect) {
+      // Portrait Mode (Mobile): Viewport is narrower than raw landscape camera.
+      // Crop excess horizontal sides to focus on the center vertical strip!
+      sWidth = videoH * screenAspect;
+      sx = (videoW - sWidth) / 2;
+    } else {
+      // Widescreen Mode (Desktop): Viewport is wider than raw camera aspect.
+      // Crop excess top/bottom vertical sections!
+      sHeight = videoW / screenAspect;
+      sy = (videoH - sHeight) / 2;
+    }
+
+    // 5. Draw Background Video buffer with matching mirror transform
     ctx.save();
     if (isFrontCamera) {
-      ctx.translate(outputWidth, 0);
+      ctx.translate(targetW, 0);
       ctx.scale(-1, 1);
     }
-    ctx.drawImage(videoElement, 0, 0, outputWidth, outputHeight);
+    ctx.drawImage(videoElement, sx, sy, sWidth, sHeight, 0, 0, targetW, targetH);
     ctx.restore();
 
-    ctx.drawImage(canvas3d, 0, 0, outputWidth, outputHeight);
+    // 6. Overlay 3D Canvas buffer (Matches target dimensions mathematically without stretching)
+    ctx.drawImage(canvas3d, 0, 0, targetW, targetH);
 
+    // 7. Fire UX effects and initiate file download
     setIsFlashing(true);
     setTimeout(() => setIsFlashing(false), 250);
 
     const link = document.createElement('a');
-    link.download = `Basket_AR_Snap_${Date.now()}.png`;
+    link.download = `Sabha_AR_Photo_${Date.now()}.png`;
     link.href = merged.toDataURL('image/png');
     link.click();
   };
