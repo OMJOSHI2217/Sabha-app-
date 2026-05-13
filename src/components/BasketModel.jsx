@@ -165,8 +165,8 @@ const BasketModel = ({ faceIndex = 0, faceDataRef, isFrontCamera = true, selecte
     const y = -(pForehead.y - 0.5) * viewport.height;
     const z = pForehead.z * -11.5;
 
-    const headPos = new THREE.Vector3(x, y, z);
-    const upwardOffset = faceHeight * (viewport.height * 0.18); 
+    // Elevated upwardOffset multiplier from 0.18 to 0.28 to move basket above the forehead onto the crown of the head
+    const upwardOffset = faceHeight * (viewport.height * 0.28); 
     const targetPos = headPos.clone().addScaledVector(vUp, upwardOffset);
 
     const baseScale = viewport.width * 0.64; 
