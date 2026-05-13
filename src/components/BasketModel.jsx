@@ -4,12 +4,12 @@ import { Html, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Import custom images
-import imgStoneBasket from '../images/Stone Basket.png';
+import imgStoneBasket from '../images/basket.png';
 import imgAdmission from '../images/Admission.png';
 import imgExam from '../images/Exam.png';
 import imgIncrement from '../images/Increment.png';
 import imgInterview from '../images/Interview.png';
-import imgResults from '../images/Results.png';
+import imgResults from '../images/Final Results.png';
 import imgStudentCareer from '../images/Student Career.png';
 import imgWife from '../images/Wife.png';
 
