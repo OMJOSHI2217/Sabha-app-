@@ -199,8 +199,8 @@ const BasketModel = ({ faceIndex = 0, faceDataRef, isFrontCamera = true, selecte
     const damping = 0.25;
     groupRef.current.position.lerp(targetPos, damping);
 
-    // 🚀 HIGH FIDELITY MULTIPLIER: Enabled by aspect calibration, size scales perfectly and huge by default!
-    const baseScale = viewport.width * 0.78;
+    // 🚀 BALANCED MULTIPLIER: Reduced from 0.78 to 0.50 to perfectly calibrate the new high-density basket asset!
+    const baseScale = viewport.width * 0.50;
     const targetScaleFactor = faceWidth * baseScale;
     const targetScale = new THREE.Vector3(targetScaleFactor, targetScaleFactor, targetScaleFactor);
 
