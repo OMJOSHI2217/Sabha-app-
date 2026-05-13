@@ -4,7 +4,7 @@ import { Html, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Import custom images
-import imgStoneBasket from '../images/image_basket.png';
+import imgStoneBasket from '../images/Stone Basket.png';
 import imgStudentCareer from '../images/Student Career.png';
 import imgAdmission from '../images/Admission.png';
 import imgExam from '../images/Exam.png';
