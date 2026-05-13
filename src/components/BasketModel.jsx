@@ -248,8 +248,8 @@ const BasketModel = ({ faceIndex = 0, faceDataRef, isFrontCamera = true, selecte
           activeSelected.map((item, index) => {
             const texture = textures[item.id];
             
-            // Tightened step interval from 0.74 to 0.60 to completely close the air gap between rocks!
-            const yPos = 0.70 + index * 0.60;
+            // Increased the step slightly from 0.60 to 0.66 to reach the absolute perfect visual gap!
+            const yPos = 0.72 + index * 0.66;
             
             const xOffset = (index % 2 === 0 ? -0.035 : 0.035);
             const zOffset = 0.15 + (index * 0.015); 
