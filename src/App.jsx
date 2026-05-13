@@ -11,8 +11,23 @@ import './App.css';
 
 function App() {
   const [videoElement, setVideoElement] = useState(null);
-  const [detectedFaces, setDetectedFaces] = useState([]); // 👈 Switched to array for Multi-Face support
   
+  // ⚡ ULTIMATE OPTIMIZATION: Decoupled live tracking data from React State!
+  // By storing coordinate arrays in a Ref, we completely eliminate the catastrophic 60FPS 
+  // React re-render churn. The ThreeJS context reads directly from this Ref in its own thread loop!
+  const faceDataRef = useRef([]); 
+  const [numFaces, setNumFaces] = useState(0); 
+  
+  const handleFaceData = React.useCallback((landmarksArray) => {
+    faceDataRef.current = landmarksArray;
+    
+    // Only trigger expensive React component updates IF the absolute number of faces shifts.
+    // Normal movement updates (coordinate shifts) remain entirely off the React Thread!
+    if (landmarksArray.length !== numFaces) {
+      setNumFaces(landmarksArray.length);
+    }
+  }, [numFaces]);
+
   // Feature States: Front/Rear camera toggle and Shutter visual flash
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [isFlashing, setIsFlashing] = useState(false);
@@ -62,10 +77,11 @@ function App() {
   // Camera Rotation trigger
   const handleToggleCamera = () => {
     setIsFrontCamera(prev => !prev);
-    setDetectedFaces([]); // Force neural engine recalibration on hardware switch
+    faceDataRef.current = [];
+    setNumFaces(0); // Force neural engine recalibration on hardware switch
   };
 
-  const hasFaces = detectedFaces.length > 0;
+  const hasFaces = numFaces > 0;
 
   return (
     <div className="app-container">
@@ -83,7 +99,7 @@ function App() {
         <div className="hud-item glass-panel" style={{flexDirection: 'row', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem'}}>
           <div className={`status-indicator ${hasFaces ? 'active' : ''}`} />
           <span className="hud-label" style={{fontSize: '0.85rem', textTransform: 'none', color: 'white'}}>
-            {hasFaces ? `Tracking ${detectedFaces.length} Face${detectedFaces.length > 1 ? 's' : ''}` : 'Searching...'}
+            {hasFaces ? `Tracking ${numFaces} Face${numFaces > 1 ? 's' : ''}` : 'Searching...'}
           </span>
         </div>
 
@@ -107,7 +123,7 @@ function App() {
         {videoElement && (
           <FaceTracker 
             videoElement={videoElement} 
-            onFaceData={setDetectedFaces} 
+            onFaceData={handleFaceData} 
             isActive={true}
           />
         )}
@@ -137,16 +153,19 @@ function App() {
             <Suspense fallback={null}>
               <Environment preset="city" />
               
-              {/* DYNAMIC MULTI-FACE RENDERER:
-                  Maps over every detected face in the viewport, dynamically instantiating 
-                  independent, auto-adjusting 3D BasketModels for each! */}
-              {detectedFaces.map((landmarks, idx) => (
-                <BasketModel 
-                  key={`basket-face-${idx}`}
-                  faceLandmarks={landmarks} 
-                  isFrontCamera={isFrontCamera}
-                />
-              ))}
+              {/* STATIC MULTI-FACE RENDERERS:
+                  Render static indices to avoid runtime overhead. These fetch 
+                  live matrix updates from faceDataRef without triggering React Renders! */}
+              <BasketModel 
+                faceIndex={0}
+                faceDataRef={faceDataRef} 
+                isFrontCamera={isFrontCamera}
+              />
+              <BasketModel 
+                faceIndex={1}
+                faceDataRef={faceDataRef} 
+                isFrontCamera={isFrontCamera}
+              />
             </Suspense>
 
             {/* Soft Contact Shadow map */}

@@ -49,7 +49,7 @@ const FaceTracker = ({ videoElement, onFaceData, isActive = true }) => {
           },
           outputFaceBlendshapes: false,
           runningMode: "VIDEO",
-          numFaces: 4 // 👈 Upgraded to support tracking up to 4 faces simultaneously!
+          numFaces: 2 // ⚡ OPTIMIZATION: Capped at 2 faces for massive speedup! (Standard filters use 1)
         });
 
         if (!isMounted) {
@@ -81,6 +81,9 @@ const FaceTracker = ({ videoElement, onFaceData, isActive = true }) => {
     };
   }, []);
 
+  // Ref to track last execution time for FPS throttling
+  const lastDetectionTimeRef = useRef(0);
+
   useEffect(() => {
     if (!videoElement || !cachedLandmarker || !isActive || isLoading) return;
 
@@ -91,13 +94,19 @@ const FaceTracker = ({ videoElement, onFaceData, isActive = true }) => {
       }
 
       const timestamp = performance.now();
-      if (videoElement.currentTime !== lastVideoTimeRef.current) {
+      const timeSinceLastDetection = timestamp - lastDetectionTimeRef.current;
+      
+      // ⚡ OPTIMIZATION: Cap detection at max ~30 FPS (33ms) to save significant CPU cycles.
+      // High frequency camera feeds (e.g. 60FPS) are downsampled here, while Three.js
+      // lerping ensures everything still feels completely buttery smooth!
+      if (videoElement.currentTime !== lastVideoTimeRef.current && timeSinceLastDetection >= 33) {
         lastVideoTimeRef.current = videoElement.currentTime;
+        lastDetectionTimeRef.current = timestamp;
 
         try {
           const results = cachedLandmarker.detectForVideo(videoElement, timestamp);
           if (results && results.faceLandmarks) {
-            // Pass the full array of detected faces to support multi-face overlay
+            // Pass the full array of detected faces
             onFaceData(results.faceLandmarks);
           } else {
             onFaceData([]);

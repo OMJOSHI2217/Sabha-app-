@@ -13,7 +13,7 @@ const LEFT_CHEEK = 234;
 const RIGHT_CHEEK = 454;
 const CHIN = 152;
 
-const BasketModel = ({ faceLandmarks, isFrontCamera = true }) => {
+const BasketModel = ({ faceIndex, faceDataRef, isFrontCamera = true }) => {
   const groupRef = useRef();
   
   // OPTIMIZATION: Access live 3D viewport measurements to scale flawlessly on Mobile vs Desktop
@@ -54,6 +54,10 @@ const BasketModel = ({ faceLandmarks, isFrontCamera = true }) => {
 
   // Core tracking logic running inside Three.js loop (60 FPS)
   useFrame((state, delta) => {
+    // ⚡ OPTIMIZATION: Directly extract coordinates from the mutable ref!
+    // This runs on the rendering thread and NEVER triggers a React reconcile pass.
+    const faceLandmarks = faceDataRef.current ? faceDataRef.current[faceIndex] : null;
+
     if (!faceLandmarks || !groupRef.current) {
       // Gradually hide/fade out or lower the basket when no face is detected
       groupRef.current.visible = THREE.MathUtils.lerp(
@@ -71,6 +75,7 @@ const BasketModel = ({ faceLandmarks, isFrontCamera = true }) => {
     // ONLY for front camera. Rear camera (environment) uses standard coordinates.
     const getMirrored = (idx) => {
       const pt = faceLandmarks[idx];
+      if (!pt) return { x: 0.5, y: 0.5, z: 0 };
       return { 
         x: isFrontCamera ? 1.0 - pt.x : pt.x, 
         y: pt.y, 
