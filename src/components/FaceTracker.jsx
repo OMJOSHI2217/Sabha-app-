@@ -1,10 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
-import { Loader2, Camera, Cpu } from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 
-// --- OPTIMIZATION: Quick Initialize Module Cache ---
-// Initialize WASM loader immediately at the module level to begin streaming data
-// BEFORE the component even mounts, saving up to several seconds of idle time.
 let globalVisionPromise = null;
 let cachedLandmarker = null;
 
@@ -17,102 +13,221 @@ function getVisionPromise() {
   return globalVisionPromise;
 }
 
-const FaceTracker = ({ videoElement, onFaceData, isActive = true }) => {
+const FaceTracker = ({
+  videoElement,
+  onFaceData,
+  onZoomChange,
+  isActive = true,
+}) => {
   const [isLoading, setIsLoading] = useState(!cachedLandmarker);
-  const [statusMessage, setStatusMessage] = useState('Engaging AI Neural Tracker...');
-  const [error, setError] = useState(null);
-  
+
   const requestRef = useRef(null);
   const lastVideoTimeRef = useRef(-1);
+
+  // ==============================
+  // SMOOTHING VALUES
+  // ==============================
+
+  const smoothZoomRef = useRef(1);
+  const smoothCenterRef = useRef({ x: 0.5, y: 0.5 });
+
+  // ==============================
+  // INITIALIZE LANDMARKER
+  // ==============================
 
   useEffect(() => {
     let isMounted = true;
 
-    async function initLandmarker() {
-      // Instant return if already cached in memory
+    async function init() {
       if (cachedLandmarker) {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
         return;
       }
 
       try {
-        setStatusMessage('Streaming Neural Networks...');
         const vision = await getVisionPromise();
 
-        if (!isMounted) return;
-        
-        setStatusMessage('Calibrating Face Matrix...');
-        const faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+        const landmarker = await FaceLandmarker.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-            delegate: "GPU"
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "GPU",
           },
-          outputFaceBlendshapes: false,
+
           runningMode: "VIDEO",
-          numFaces: 1 // ⚡ OPTIMIZATION: Set to exactly 1 face for maximum performance and stability!
+          numFaces: 1,
+
+          // ==============================
+          // HIGH ACCURACY SETTINGS
+          // ==============================
+
+          minFaceDetectionConfidence: 0.75,
+          minTrackingConfidence: 0.75,
+          minFacePresenceConfidence: 0.75,
+
+          outputFaceBlendshapes: false,
         });
 
-        if (!isMounted) {
-          faceLandmarker.close();
-          return;
-        }
+        if (!isMounted) return;
 
-        cachedLandmarker = faceLandmarker;
+        cachedLandmarker = landmarker;
         setIsLoading(false);
-        console.log("⚡ AI Face Tracker initialized instantly via cache.");
       } catch (err) {
-        console.error("Failed to initialize face landmarker:", err);
-        if (isMounted) {
-          setError("Face tracking startup failed. Retrying...");
-          setIsLoading(false);
-        }
+        console.error(err);
       }
     }
 
-    initLandmarker();
+    init();
 
     return () => {
       isMounted = false;
-      // NOTE: We DELIBERATELY do not close the cachedLandmarker here, 
-      // so it remains warm and ready for immediate hot-reloading!
+
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
       }
     };
   }, []);
 
-  // Ref to track last execution time for FPS throttling
-  const lastDetectionTimeRef = useRef(0);
+  // ==============================
+  // MAIN DETECTION LOOP
+  // ==============================
 
   useEffect(() => {
-    if (!videoElement || !cachedLandmarker || !isActive || isLoading) return;
+    if (
+      !videoElement ||
+      !cachedLandmarker ||
+      !isActive ||
+      isLoading
+    )
+      return;
 
     const detect = () => {
-      if (!videoElement || videoElement.paused || videoElement.ended) {
+      if (
+        !videoElement ||
+        videoElement.paused ||
+        videoElement.ended
+      ) {
         requestRef.current = requestAnimationFrame(detect);
         return;
       }
 
-      const timestamp = performance.now();
-      const timeSinceLastDetection = timestamp - lastDetectionTimeRef.current;
-      
-      // ⚡ OPTIMIZATION: Cap detection at max ~30 FPS (33ms) to save significant CPU cycles.
-      // High frequency camera feeds (e.g. 60FPS) are downsampled here, while Three.js
-      // lerping ensures everything still feels completely buttery smooth!
-      if (videoElement.currentTime !== lastVideoTimeRef.current && timeSinceLastDetection >= 33) {
+      // ==============================
+      // RUN ONLY ON NEW FRAME
+      // ==============================
+
+      if (videoElement.currentTime !== lastVideoTimeRef.current) {
         lastVideoTimeRef.current = videoElement.currentTime;
-        lastDetectionTimeRef.current = timestamp;
+
+        const now = performance.now();
 
         try {
-          const results = cachedLandmarker.detectForVideo(videoElement, timestamp);
-          if (results && results.faceLandmarks) {
-            // Pass the full array of detected faces
-            onFaceData(results.faceLandmarks);
+          const results = cachedLandmarker.detectForVideo(
+            videoElement,
+            now
+          );
+
+          if (
+            results &&
+            results.faceLandmarks &&
+            results.faceLandmarks.length > 0
+          ) {
+            const landmarks = results.faceLandmarks[0];
+
+            // ==============================
+            // IMPORTANT LANDMARKS
+            // ==============================
+
+            const leftEye = landmarks[33];
+            const rightEye = landmarks[263];
+            const nose = landmarks[1];
+
+            // ==============================
+            // EYE DISTANCE
+            // ==============================
+
+            const dx = rightEye.x - leftEye.x;
+            const dy = rightEye.y - leftEye.y;
+
+            const eyeDistance = Math.sqrt(dx * dx + dy * dy);
+
+            // ==============================
+            // DEPTH USING Z AXIS
+            // ==============================
+
+            const avgDepth =
+              (leftEye.z + rightEye.z + nose.z) / 3;
+
+            // ==============================
+            // COMBINED ZOOM CALCULATION
+            // ==============================
+
+            const zoomFromEyes = eyeDistance * 4.2;
+
+            const zoomFromDepth = 1 - avgDepth * 2.5;
+
+            let targetZoom =
+              zoomFromEyes * 0.7 +
+              zoomFromDepth * 0.3;
+
+            // ==============================
+            // LIMIT ZOOM RANGE
+            // ==============================
+
+            targetZoom = Math.max(1, Math.min(3, targetZoom));
+
+            // ==============================
+            // ULTRA SMOOTH FILTER
+            // ==============================
+
+            const zoomSmoothness = 0.08;
+
+            smoothZoomRef.current +=
+              (targetZoom - smoothZoomRef.current) *
+              zoomSmoothness;
+
+            // ==============================
+            // FACE CENTER
+            // ==============================
+
+            const targetCenter = {
+              x: nose.x,
+              y: nose.y,
+            };
+
+            // ==============================
+            // CENTER SMOOTHING
+            // ==============================
+
+            const centerSmoothness = 0.12;
+
+            smoothCenterRef.current.x +=
+              (targetCenter.x -
+                smoothCenterRef.current.x) *
+              centerSmoothness;
+
+            smoothCenterRef.current.y +=
+              (targetCenter.y -
+                smoothCenterRef.current.y) *
+              centerSmoothness;
+
+            // ==============================
+            // SEND DATA TO PARENT
+            // ==============================
+
+            onZoomChange?.({
+              zoom: smoothZoomRef.current,
+              center: smoothCenterRef.current,
+              rawZoom: targetZoom,
+              eyeDistance,
+              depth: avgDepth,
+            });
+
+            onFaceData?.(results.faceLandmarks);
           } else {
-            onFaceData([]);
+            onFaceData?.([]);
           }
-        } catch (e) {
-          // Silently handle occasional frame dropped errors
+        } catch (err) {
+          console.log(err);
         }
       }
 
@@ -126,34 +241,17 @@ const FaceTracker = ({ videoElement, onFaceData, isActive = true }) => {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [videoElement, onFaceData, isActive, isLoading]);
+  }, [
+    videoElement,
+    isActive,
+    isLoading,
+    onFaceData,
+    onZoomChange,
+  ]);
 
-  if (isLoading) {
-    return (
-      <div className="tracker-loader glass-panel">
-        <Loader2 className="animate-spin text-indigo-400" size={48} />
-        <p className="loading-text">{statusMessage}</p>
-        <div className="status-icons">
-          <span className="status-tag"><Camera size={14} /> Camera Connected</span>
-          <span className="status-tag"><Cpu size={14} /> GPU Acceleration</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="tracker-loader glass-panel error">
-        <div className="error-circle">!</div>
-        <p className="loading-text text-rose-400">{error}</p>
-      </div>
-    );
-  }
-
-  return null; // Tracker operates invisibly once loaded
+  return null;
 };
 
-// Pre-warm WASM bundle asynchronously during module evaluation
 getVisionPromise();
 
 export default FaceTracker;
