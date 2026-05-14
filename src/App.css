@@ -368,6 +368,60 @@
   user-select: none;
 }
 
+/* Advanced Multi-Action Zoom Pod */
+.zoom-control-pod {
+  height: 50px;
+  padding: 0 0.5rem;
+  border-radius: 25px; /* Ellipse pill UI */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.zoom-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.1);
+}
+
+.zoom-action-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.zoom-action-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.zoom-display-text {
+  color: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+  min-width: 44px;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  user-select: none;
+}
+
 /* Sleek Circular Shutter Button (iOS/Android Style) */
 .shutter-btn {
   width: 74px;
@@ -672,6 +726,28 @@
     width: 46px !important;
     height: 46px !important;
   }
+
+  /* 📱 DOWNSIZE COMPACT ZOOM POD FOR STANDARD MOBILE */
+  .camera-controls .zoom-control-pod {
+    height: 44px !important;
+    padding: 0 0.35rem !important;
+    gap: 0.4rem !important;
+  }
+
+  .camera-controls .zoom-action-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .camera-controls .zoom-action-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .camera-controls .zoom-display-text {
+    font-size: 0.8rem !important;
+    min-width: 38px !important;
+  }
   
   .visual-prompt {
     bottom: calc(6.5rem + env(safe-area-inset-bottom, 10px)) !important;
@@ -726,6 +802,28 @@
   .camera-controls .shutter-inner {
     width: 40px !important;
     height: 40px !important;
+  }
+
+  /* 📟 EXTRA COMPRESS ZOOM POD FOR TINY SCREEN REAL ESTATE */
+  .camera-controls .zoom-control-pod {
+    height: 38px !important;
+    padding: 0 0.25rem !important;
+    gap: 0.25rem !important;
+  }
+
+  .camera-controls .zoom-action-btn {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .camera-controls .zoom-action-btn svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .camera-controls .zoom-display-text {
+    font-size: 0.75rem !important;
+    min-width: 34px !important;
   }
 }
 

@@ -240,8 +240,8 @@ const BasketModel = ({ faceIndex = 0, faceDataRef, isFrontCamera = true, selecte
 
     const headPos = wForehead;
     
-    // 📏 ZOOM-ADAPTIVE BOUNDING: Maintain optimized height offsets during magnification
-    const zoomCorrection = zoom === 1 ? 1.0 : zoom === 2 ? 0.86 : zoom === 3 ? 0.76 : 0.66;
+    // 📏 SMOOTH LINEAR ZOOM-ADAPTATION: Seamlessly nest the basket tighter as floats scale incrementally
+    const zoomCorrection = Math.max(0.65, 1.0 - (zoom - 1.0) * 0.085);
     const upwardOffset = physicalFaceHeight * (0.18 * zoomCorrection);
     
     const targetPos = headPos.clone().addScaledVector(vUp, upwardOffset);

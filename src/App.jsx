@@ -1,7 +1,7 @@
 import React, { useState, Suspense, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Environment, ContactShadows } from '@react-three/drei';
-import { Sparkles, CameraOff, Cpu, UserCheck, Camera, RefreshCw } from 'lucide-react';
+import { Sparkles, CameraOff, Cpu, UserCheck, Camera, RefreshCw, Plus, Minus } from 'lucide-react';
 
 import CameraFeed from './components/CameraFeed';
 import FaceTracker from './components/FaceTracker';
@@ -43,13 +43,12 @@ function App() {
   const [isFlashing, setIsFlashing] = useState(false);
   const [zoom, setZoom] = useState(1);
 
-  const handleCycleZoom = () => {
-    setZoom(prev => {
-      if (prev === 1) return 2;
-      if (prev === 2) return 3;
-      if (prev === 3) return 5;
-      return 1;
-    });
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(5, parseFloat((prev + 0.5).toFixed(1))));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(1, parseFloat((prev - 0.5).toFixed(1))));
   };
 
   // --- Lifted Milestone State ---
@@ -300,14 +299,28 @@ function App() {
               <div className="shutter-inner" />
             </button>
 
-            {/* 🔍 DYNAMIC ZOOM CONTROLLER PRESET (UP TO 5x) */}
-            <button 
-              className="control-btn glass-panel ripple" 
-              onClick={handleCycleZoom}
-              title="Change Zoom Factor"
-            >
-              <span className="zoom-indicator-text">{zoom}x</span>
-            </button>
+            {/* 🔍 ADVANCED ZOOM POD (+ / - CONTROLS) */}
+            <div className="zoom-control-pod glass-panel">
+              <button 
+                className="zoom-action-btn ripple" 
+                onClick={handleZoomOut}
+                disabled={zoom <= 1}
+                title="Zoom Out"
+              >
+                <Minus size={16} color="white" />
+              </button>
+              
+              <span className="zoom-display-text">{zoom.toFixed(1)}x</span>
+              
+              <button 
+                className="zoom-action-btn ripple" 
+                onClick={handleZoomIn}
+                disabled={zoom >= 5}
+                title="Zoom In"
+              >
+                <Plus size={16} color="white" />
+              </button>
+            </div>
           </div>
         )}
 
