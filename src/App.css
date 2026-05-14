@@ -640,6 +640,11 @@
   .camera-controls {
     bottom: calc(1.5rem + env(safe-area-inset-bottom, 15px)) !important;
   }
+
+  /* 🚫 IMMERSIVE MOBILE LAYOUT: Hide Zoom and Flip Camera buttons to focus strictly on the shutter */
+  .camera-controls .control-btn {
+    display: none !important;
+  }
   
   .visual-prompt {
     bottom: calc(7.5rem + env(safe-area-inset-bottom, 15px)) !important;
